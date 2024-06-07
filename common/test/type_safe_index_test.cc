@@ -1,6 +1,8 @@
 #include "drake/common/type_safe_index.h"
 
+#include <compare>
 #include <limits>
+#include <optional>
 #include <regex>
 #include <sstream>
 #include <string>
@@ -603,6 +605,18 @@ GTEST_TEST(TypeSafeIndex, SortedPairIndexHashable) {
   std::unordered_set<SortedPair<AIndex>> pairs;
   pairs.insert({a2, a1});
   EXPECT_TRUE(pairs.contains(SortedPair<AIndex>(a1, a2)));
+}
+
+GTEST_TEST(TypeSafeIndex, OptionalCompare) {
+  struct Thing {
+    std::optional<int> field;
+    auto operator<=>(const Thing&) const = default;
+  };
+  Thing thing1;
+  thing1.field = int(1);
+  Thing thing2;
+  thing2.field = int(2);
+  EXPECT_TRUE(thing1 < thing2);
 }
 
 }  // namespace
