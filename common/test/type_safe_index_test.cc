@@ -609,13 +609,22 @@ GTEST_TEST(TypeSafeIndex, SortedPairIndexHashable) {
 
 GTEST_TEST(TypeSafeIndex, OptionalCompare) {
   struct Thing {
-    std::optional<int> field;
+    std::optional<AIndex> field;
+#if defined(__apple_build_version__) && (__apple_build_version__ < 15000000)
+    auto operator<=>(const Thing& that) const {
+      if (field.has_value() && that.field.has_value()) {
+	return *field <=> *that.field;
+      }
+      return field.has_value() <=> field.has_value();
+    }
+#else
     auto operator<=>(const Thing&) const = default;
+#endif
   };
   Thing thing1;
-  thing1.field = int(1);
+  thing1.field = AIndex(1);
   Thing thing2;
-  thing2.field = int(2);
+  thing2.field = AIndex(2);
   EXPECT_TRUE(thing1 < thing2);
 }
 
