@@ -66,75 +66,6 @@ def repair_naive_name_split(objpath):
     return out
 
 
-class IrregularExpression:
-    """Provides analogous parsing to `autodoc.py_ext_sig_re` and
-    `pydoc.py_sig_re`, but permits nested parsing for class-like directives to
-    work with the munged names.
-
-    These are meant to be used to monkey-patch existing compiled regular
-    expressions.
-    """
-
-    FakeMatch = namedtuple('FakeMatch', 'groups')
-
-    py_sig_old = autodoc.py_ext_sig_re
-    py_sig = re.compile(
-        r'''^     (\w.*?) \s*               # symbol
-                  (?:
-                      \((.*)\)              # optional: arguments
-                      (?:\s* -> \s* (.*))?  # return annotation
-                  )? $
-              ''', re.VERBOSE)
-
-    def __init__(self, extended):
-        """
-        Args:
-            extended: For use in `autodoc` (returns explicit reST module name
-                scope).
-        """
-        self.extended = extended
-
-    def match(self, full):
-        """Tests if a string matches `full`. If not, returns None."""
-        m = self.py_sig.match(full)
-        if not m:
-            return None
-        symbol, arg, retann = m.groups()
-        # Heuristic to not try and match for docstring phrases. Any space
-        # should be balanced with a comma for the symbol.
-        if symbol.count(' ') > symbol.count(','):
-            return None
-        # Extract module name using a greedy match.
-        explicit_modname = None
-        if "::" in symbol:
-            pos = rindex(symbol, "::") + 2
-            explicit_modname = symbol[:pos]
-            symbol = symbol[pos:].strip()
-        # Extract {path...}.{base}, accounting for brackets.
-        if not symbol:
-            return
-        pieces = repair_naive_name_split(symbol.split('.'))
-        assert len(pieces) > 0, (symbol, pieces)
-        base = pieces[-1]
-        if len(pieces) > 1:
-            path = '.'.join(pieces[:-1]) + '.'
-        else:
-            path = None
-        if self.extended:
-            # Different versions of sphinx have different groups in their
-            # regular expressions, so our returned groups must match the
-            # signature of the specific version of sphinx being wrapped.
-            if sphinx_version[:3] >= (7, 1, 0):
-                type_par = ""
-                groups = (explicit_modname, path, base, type_par, arg, retann)
-            else:
-                groups = (explicit_modname, path, base, arg, retann)
-        else:
-            assert explicit_modname is None
-            groups = (path, base, arg, retann)
-        return self.FakeMatch(lambda: groups)
-
-
 class TemplateDocumenter(autodoc.ModuleLevelDocumenter):
     """Specializes `Documenter` for templates from `cpp_template`.
     """
@@ -428,9 +359,6 @@ def setup(app):
     # Register autodocumentation for templates.
     app.add_autodoc_attrgetter(TemplateBase, tpl_attrgetter)
     app.add_autodocumenter(TemplateDocumenter)
-    # Hack regular expressions to make them irregular (nested).
-    autodoc.py_ext_sig_re = IrregularExpression(extended=True)
-    pydoc.py_sig_re = IrregularExpression(extended=False)
     patch(autodoc.ClassLevelDocumenter, 'resolve_name', patch_resolve_name)
     patch(autodoc.ModuleLevelDocumenter, 'resolve_name', patch_resolve_name)
     patch(autodoc.Documenter, 'document_members', patch_document_members)
