@@ -1,4 +1,5 @@
 kcov
+nginx-light
 python3-dateutil
 python3-flask
 python3-nbconvert
