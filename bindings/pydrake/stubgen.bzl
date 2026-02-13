@@ -1,3 +1,5 @@
+load("@rules_python//python:defs.bzl", "PyInfo")
+
 def _impl(ctx):
     ctx.actions.run(
         mnemonic = "GenerateMypyStubs",
@@ -5,10 +7,15 @@ def _impl(ctx):
         arguments = [x.path for x in ctx.outputs.outs],
         outputs = ctx.outputs.outs,
     )
-    return [DefaultInfo(
-        files = depset(ctx.outputs.outs),
-        data_runfiles = ctx.runfiles(files = ctx.outputs.outs),
-    )]
+    return [
+        DefaultInfo(
+            files = depset(ctx.outputs.outs),
+            default_runfiles = ctx.runfiles(files = ctx.outputs.outs),
+        ),
+        PyInfo(
+            transitive_sources = depset(ctx.outputs.outs),
+        ),
+    ]
 
 generate_python_stubs = rule(
     implementation = _impl,

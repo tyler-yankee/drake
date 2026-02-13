@@ -216,7 +216,13 @@ drake_py_library(
 drake_py_library(
     name = "pydrake",
     visibility = ["//visibility:public"],
-    deps = [":all_py"],
+    deps = [
+        ":all_py",
+        "pydrake_pyi",
+    ],
+    data = [
+        ":pydrake_typed",
+    ],
 )
 
 # Roll-up for publicly accessible testing utilities (for development with
