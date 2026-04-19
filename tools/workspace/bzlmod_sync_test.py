@@ -44,6 +44,7 @@ class TestBzlmodSync(unittest.TestCase):
         modules_to_sync = [
             "apple_support",
             "rules_python",
+            "rules_rust",
         ]
         for item in modules_to_sync:
             with self.subTest(module_to_sync=item):

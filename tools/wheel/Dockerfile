@@ -34,6 +34,7 @@ RUN /image/provision-python.sh ${PYTHON} ${PYTHON_SHA}
 # -----------------------------------------------------------------------------
 
 ADD image/build-drake.sh /image/
+ADD image/rules_rust-src.tar /tmp/drake-wheel-build/rules_rust-src/
 ADD image/drake-src.tar /tmp/drake-wheel-build/drake-src/
 COPY image/snopt.tar.gz /tmp/drake-wheel-build/snopt/
 

@@ -17,6 +17,7 @@ case "$ID" in
         libx11-6 libsm6 libxt6 libglib2.0-0
     ;;
   amzn)
+    dnf update -y --releasever latest
     dnf install -y ${PYTHON}
     ;;
   *)

@@ -3,6 +3,12 @@ module(name = "drake_cmake")
 bazel_dep(name = "apple_support", version = "2.5.2")
 bazel_dep(name = "rules_python", version = "1.9.0")
 
+bazel_dep(name = "rules_rust", version = "0.68.0")
+local_path_override(
+    module_name = "rules_rust",
+    path = "/tmp/drake-wheel-build/rules_rust-src/",
+)
+
 bazel_dep(name = "drake")
 local_path_override(
     module_name = "drake",

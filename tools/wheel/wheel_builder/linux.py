@@ -213,6 +213,36 @@ def _create_source_tar(path):
     out.close()
 
 
+def _create_rust_tar(path):
+    """
+    Creates a tarball of rules_rust.
+    """
+    print("[-] Creating source archive", end="", flush=True)
+    out = tarfile.open(path, "w")
+
+    # Walk the git root and archive almost every file we find.
+    repo_dir = os.path.join(_git_root(resource_root), "../rules_rust")
+    for f in sorted(os.listdir(repo_dir)):
+        # Exclude build and VCS directories.
+        if f == ".git" or f == "user.bazelrc" or f.startswith("bazel-"):
+            continue
+
+        # Exclude host-generated setup files.
+        if f == "gen":
+            continue
+
+        # Never add our output (wheel files) back in as input.
+        if f.endswith(".whl"):
+            continue
+
+        print(".", end="", flush=True)
+        exclude = ["wheel"] if f == "tools" else []
+        _add_to_tar(out, f, "", repo_dir, exclude=exclude)
+
+    print(" done")
+    out.close()
+
+
 def _tagname(
     target: Target, role: Role, tag_prefix: str, test_index: int | None = None
 ):
@@ -409,6 +439,10 @@ def build(options):
     source_tar = os.path.join(resource_root, "image", "drake-src.tar")
     _files_to_remove.append(source_tar)
     _create_source_tar(source_tar)
+
+    rust_tar = os.path.join(resource_root, "image", "rules_rust-src.tar")
+    _files_to_remove.append(rust_tar)
+    _create_rust_tar(rust_tar)
 
     # Build the requested wheels.
     for t in targets_to_build:
