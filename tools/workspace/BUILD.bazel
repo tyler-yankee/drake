@@ -54,6 +54,7 @@ filegroup(
         "@osqp_internal//:drake_repository_metadata.json",
         "@picosha2_internal//:drake_repository_metadata.json",
         "@pybind11//:drake_repository_metadata.json",
+        "@python//:drake_repository_metadata.json",
         "@qdldl_internal//:drake_repository_metadata.json",
         "@qhull_internal//:drake_repository_metadata.json",
         "@ros_xacro_internal//:drake_repository_metadata.json",

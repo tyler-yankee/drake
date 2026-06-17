@@ -29,9 +29,6 @@ while [ "${1:-}" != "" ]; do
             purge=
             lock_args+=( --update-reuse )
             ;;
-        --commit)
-            commit=1
-            ;;
         *)
             echo "Invalid command line argument, $1." >&2
             exit 5
@@ -122,15 +119,5 @@ readonly mypy_requirements="./setup/python/mypy/requirements.txt"
 bazel run //setup/python/mypy:lock.update
 files_to_commit+=( "$(git diff --name-only HEAD -- "${mypy_requirements}")" )
 
-# If committing, do the commit.
-if [ -n "${commit}" ]; then
-    if [ ${#files_to_commit[@]} == 0 ]; then
-        set +x
-        echo
-        echo "No changes need to be committed."
-        exit 0
-    fi
-
-    message="[setup] Upgrade Python venv to latest"
-    git commit -m "${message}" -o "${files_to_commit[@]}"
-fi
+# Stage the changes.
+git add ${files_to_commit[@]}

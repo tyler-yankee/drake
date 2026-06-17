@@ -72,13 +72,6 @@ _CHECK_ONLY_REPOSITORIES = [
     "doxygen_internal",
 ]
 
-# These repositories cannot be automatically upgraded nor automatically checked
-# for possible upgrades. When checking for new releases, always print a reminder
-# to manually check for upgrades.
-_OTHER_REPOSITORIES = [
-    "python",
-]
-
 # Packages in these cohorts should be upgraded together (in a single commit).
 _COHORTS = (
     # clarabel_cpp uses crate_universe; be sure to keep them aligned.
@@ -482,7 +475,7 @@ def _do_upgrade(
     upgrade_type = UpgradeType(data["upgrade_type"])
     bzl_filename = f"tools/workspace/{workspace_name}/repository.bzl"
 
-    if workspace_name in _OTHER_REPOSITORIES + _CHECK_ONLY_REPOSITORIES:
+    if workspace_name in _CHECK_ONLY_REPOSITORIES:
         upgrade_advice = data.get("upgrade_advice", "")
         error_message = f"Cannot auto-upgrade {workspace_name}"
         if len(upgrade_advice):
@@ -783,9 +776,6 @@ def main():
         # Run our report of what's available.
         info("Checking for new releases...")
         _check_for_upgrades(gh, metadata)
-
-        for repo in _OTHER_REPOSITORIES:
-            info(f"{repo} may need upgrade but cannot be auto-upgraded.")
 
     if args.lint:
         subprocess.check_call(["bazel", "test", "--config=lint", "//..."])

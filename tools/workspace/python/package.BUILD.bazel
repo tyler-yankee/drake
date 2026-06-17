@@ -85,3 +85,5 @@ toolchain(
     toolchain = ":py_cc",
     toolchain_type = "@rules_python//python/cc:toolchain_type",
 )
+
+exports_files(["drake_repository_metadata.json"])

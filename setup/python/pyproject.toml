@@ -25,9 +25,11 @@ dependencies = [
 ]
 
 [dependency-groups]
-# (Additional) dependencies needed to run Drake's tests.
-test = [
+# (Additional) dependencies needed for Drake developers.
+developer = [
     "flask",
+    "GitPython",
+    "jwt",
     "six",
     "u-msgpack-python",
     "websockets",

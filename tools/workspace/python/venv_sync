@@ -95,6 +95,10 @@ readonly venv_drake="${drake_python}/venv.drake"
 mkvenv "${venv_drake}"
 "${venv_pdm}/bin/pdm" use -p "${project}" -f "${venv_drake}"
 
+# Make sure all dependency groups are resolved, which is particularly relevant
+# if any groups have changed since the last time the lock file was generated.
+"${venv_pdm}/bin/pdm" lock -p "${project}" -G :all
+
 # Ask PDM to install whatever dependencies we need.
 readonly install_args=( $(cat "${repository}/@pdm-install-args") )
 "${venv_pdm}/bin/pdm" sync \
@@ -124,7 +128,7 @@ if [[ -z "${checksum}" ]]; then
     exit 1
 fi
 
-# Symlink our venv path for the repository.bzl to use. It's directory name
+# Symlink our venv path for the repository.bzl to use. Its directory name
 # inside of our repository is a hash of the requirements file so that Bazel
 # will invalidate all Python targets when the checksum changes.
 ln -nsf "${venv_drake}" "${repository}/${checksum}"

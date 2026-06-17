@@ -41,6 +41,7 @@ load(
     "homebrew_prefix",
     "which",
 )
+load("//tools/workspace:metadata.bzl", "generate_repository_metadata")
 
 def _get_python_interpreter(repo_ctx):
     """Returns the tuple (python_interpreter_path, major_minor_version) based
@@ -134,8 +135,8 @@ def _prepare_venv(repo_ctx, python):
     # Choose which dependencies to install.
     if is_wheel_build:
         repo_ctx.file("@pdm-install-args", content = "-G wheel")
-    elif repo_ctx.attr.requirements_flavor == "test":
-        repo_ctx.file("@pdm-install-args", content = "-G test")
+    elif repo_ctx.attr.requirements_flavor == "developer":
+        repo_ctx.file("@pdm-install-args", content = "-G developer")
     else:
         repo_ctx.file("@pdm-install-args", content = "--prod")
 
@@ -200,6 +201,16 @@ PYTHON_LINKOPTS = {linkopts}
         executable = False,
     )
 
+    generate_repository_metadata(
+        repo_ctx,
+        repository = "python",
+        repository_rule_type = "scripted",
+        upgrade_type = "release",
+        upgrade_script = "venv_upgrade",
+        # Mirroring this to S3 doesn't make sense.
+        mirror_to_s3 = False,
+    )
+
 python_repository = repository_rule(
     _impl,
     environ = [
@@ -214,8 +225,8 @@ python_repository = repository_rule(
             default = "{homebrew_prefix}/bin/python3.14",
         ),
         "requirements_flavor": attr.string(
-            default = "test",
-            values = ["build", "test"],
+            default = "developer",
+            values = ["build", "developer"],
         ),
     },
     configure = True,
