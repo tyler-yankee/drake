@@ -2,7 +2,6 @@
 # //tools/wheel:builder for the user interface.
 
 import argparse
-from enum import Enum
 import gzip
 import io
 import locale
@@ -13,6 +12,8 @@ import shutil
 import subprocess
 import sys
 import tarfile
+
+from .common_types import PythonBinder
 
 # Location where most of the build will take place. This is a symlink to the
 # actual build directory which a) is unique per build, and b) resides in the
@@ -33,13 +34,6 @@ wheelhouse = os.path.join(wheel_root, "wheelhouse")
 
 # Location of various scripts and other artifacts used to complete the build.
 resource_root = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
-
-
-class PythonBinder(Enum):
-    _value_: str
-
-    NANOBIND = "nanobind"
-    PYBIND11 = "pybind11"
 
 
 def gripe(message):

@@ -20,7 +20,8 @@ from .common import (
     wheel_name,
     wheelhouse,
 )
-from .macos_types import PythonTarget
+from .common_types import Role, Target
+from .macos_types import Platform
 
 # This is the complete set of defined targets (i.e. potential wheels). By
 # default, all targets are built, but the user may down-select from this set.
@@ -40,9 +41,21 @@ PYTHON_TARGETS = (
     # * the Python versions supported by MOSEK, in tools/wheel/setup.py. If
     #   there is any Python version supported by Drake, but not MOSEK, a note
     #   should be added to the aforementioned installation documentation.
-    PythonTarget(PythonBinder.NANOBIND, 3, 13),
-    PythonTarget(PythonBinder.PYBIND11, 3, 13),
-    PythonTarget(PythonBinder.PYBIND11, 3, 14),
+    Target(
+        build_platform=Platform((3, 13)),
+        test_platforms=(Platform((3, 13)), Platform((3, 14))),
+        python_binder=PythonBinder.NANOBIND,
+    ),
+    Target(
+        build_platform=Platform((3, 13)),
+        test_platforms=(Platform((3, 13)),),
+        python_binder=PythonBinder.PYBIND11,
+    ),
+    Target(
+        build_platform=Platform((3, 14)),
+        test_platforms=(Platform((3, 14)),),
+        python_binder=PythonBinder.PYBIND11,
+    ),
 )
 
 
@@ -54,7 +67,7 @@ def _find_wheel(path, version, python_target):
     """
     pattern = wheel_name(
         python_binder=python_target.python_binder,
-        python_version=python_target.tag,
+        python_version=python_target.platform(Role.BUILD).python_tag,
         wheel_version=version,
         wheel_platform="*",
     )
@@ -79,7 +92,7 @@ def _assert_isdir(path, name):
         die(f"{name} '{path}' is not a valid directory")
 
 
-def _test_wheel(wheel, python_target, env):
+def _test_wheel(wheel, test_platform, env):
     """
     Runs the test script on `wheel`.
     """
@@ -87,12 +100,12 @@ def _test_wheel(wheel, python_target, env):
         resource_root, "macos", "provision-test-python.sh"
     )
     subprocess.check_call(
-        ["bash", setup_script, python_target.version], env=env
+        ["bash", setup_script, test_platform.python_version], env=env
     )
 
     test_python_venv = os.path.join(test_root, "python")
     os.symlink(
-        os.path.join(test_root, f"python{python_target.version}"),
+        os.path.join(test_root, f"python{test_platform.python_version}"),
         test_python_venv,
     )
 
@@ -120,7 +133,7 @@ def build(options):
     # Collect set of wheels to be built.
     targets_to_build = []
     for t in PYTHON_TARGETS:
-        if t.tag in options.python_versions:
+        if t.platform(Role.BUILD).python_tag in options.python_versions:
             targets_to_build.append(t)
 
     # Check if there is anything to do.
@@ -182,7 +195,7 @@ def build(options):
         build_script = os.path.join(resource_root, "macos", "build-wheel.sh")
         build_command = ["bash", build_script]
         build_command.append(version)
-        build_command.append(python_target.version)
+        build_command.append(python_target.platform(Role.BUILD).python_version)
 
         subprocess.check_call(build_command, env=environment)
 
@@ -194,7 +207,8 @@ def build(options):
         )
 
         if options.test:
-            _test_wheel(wheel, python_target=python_target, env=environment)
+            for test_platform in python_target.test_platforms:
+                _test_wheel(wheel, test_platform, environment)
 
         if options.extract:
             shutil.copy2(wheel, options.output_dir)
@@ -231,7 +245,9 @@ def add_selection_arguments(parser):
         "--python",
         dest="python_versions",
         metavar="VERSIONS",
-        default=",".join(sorted({t.tag for t in PYTHON_TARGETS})),
+        default=",".join(
+            sorted({t.platform(Role.BUILD).python_tag for t in PYTHON_TARGETS})
+        ),
         help=(
             "python version(s) to build; "
             "separate with ',' (default: %(default)s)"
