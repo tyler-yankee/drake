@@ -1,29 +1,38 @@
 # This file contains data types used by the macOS-specific build logic. See
 # //tools/wheel:builder for the user interface.
 
-from .common import PythonBinder
+from dataclasses import dataclass
+
+from .common import PythonBinder, Role
 
 
-class PythonTarget:
-    """
-    A representation of a Python target, constructed from the binder and Python
-    version number tuple.
+@dataclass
+class Platform:
+    python_version_tuple: tuple[int, int]
 
-    Example:
-        PythonTarget(PythonBinder.NANOBIND, 3, 2, 1)
+    def __post_init__(self):
+        pv_parts = tuple(map(str, self.python_version_tuple))
+        self.python_version = ".".join(pv_parts)
+        self.python_tag = "".join(pv_parts)
 
-    Members:
-        python_binder: Which binder to use.
-        version_tuple: Target version as a tuple, e.g. (3, 2, 1)
-        version_full: Target full version as a string, e.g. '3.2.1'
-        version: Target major/minor version as a string, e.g. '3.2'
-        tag: Target major/minor version without separators, e.g. '32'
-    """
 
-    def __init__(self, python_binder: PythonBinder, *version_parts: int):
-        self.python_binder = python_binder
-        pv_parts = tuple(map(str, version_parts))
-        self.version_tuple = tuple(version_parts)
-        self.version_full = ".".join(pv_parts)
-        self.version = ".".join(pv_parts[:2])
-        self.tag = "".join(pv_parts[:2])
+@dataclass
+class Target:
+    build_platform: Platform
+    python_binder: PythonBinder
+    test_platforms: tuple[Platform]
+
+    def __post_init__(self):
+        assert isinstance(self.test_platforms, tuple)
+
+    def platform(self, role: Role, test_index: int | None = None) -> Platform:
+        """Returns the Platform for the given `role`. For the test role, the
+        `test_index` into the `self.test_platforms` tuple is required. For the
+        build role, the `test_index` must be None."""
+        if role == Role.BUILD:
+            assert test_index is None
+            return self.build_platform
+        if role == Role.TEST:
+            assert test_index is not None
+            return self.test_platforms[test_index]
+        raise NotImplementedError(role)

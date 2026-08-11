@@ -2,6 +2,7 @@
 # //tools/wheel:builder for the user interface.
 
 import argparse
+from dataclasses import dataclass
 from enum import Enum
 import gzip
 import io
@@ -40,6 +41,13 @@ class PythonBinder(Enum):
 
     NANOBIND = "nanobind"
     PYBIND11 = "pybind11"
+
+
+class Role(Enum):
+    _value_: str
+
+    BUILD = "build"
+    TEST = "test"
 
 
 def gripe(message):
