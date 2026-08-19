@@ -22,7 +22,7 @@ from .common import (
     wheel_name,
     wheelhouse,
 )
-from .linux_types import BUILD, TEST, Platform, PythonManager, Role, Target
+from .linux_types import Platform, Target, TestCase
 
 # Artifacts that need to be cleaned up. DO NOT MODIFY outside of this file.
 _files_to_remove = set()
@@ -32,6 +32,13 @@ _built_test_bases = set()
 tag_base = "pip-drake"
 
 ARCH = platform.machine()
+
+# Supported platforms on which every wheel is tested.
+_TEST_PLATFORMS = (
+    Platform("amazonlinux", "2023", "AL2023"),
+    Platform("ubuntu", "24.04", "noble"),
+    Platform("ubuntu", "26.04", "resolute"),
+)
 
 # This is the complete set of defined targets (i.e. potential wheels). By
 # default, all targets matching the currently running architecture are built,
@@ -53,89 +60,69 @@ targets = {
     "x86_64": (
         Target(
             python_binder=PythonBinder.NANOBIND,
-            python=PythonTarget(3, 12, 13),
             build_platform=Platform("amd64/almalinux", "9", "almalinux9"),
-            test_platforms=(
-                Platform("amazonlinux", "2023", "AL2023"),
-                Platform("ubuntu", "24.04", "noble"),
-                Platform("ubuntu", "26.04", "resolute", PythonManager.UV),
-                # TODO(jwnimmer-tri) We should test this same abi3 wheel on all
-                # newer Python versions (so 3.13, 3.14, etc.).
+            build_python=PythonTarget(3, 12, 13),
+            test_platforms=_TEST_PLATFORMS,
+            test_pythons=(
+                PythonTarget(3, 12),
+                PythonTarget(3, 13),
+                PythonTarget(3, 14),
             ),
         ),
         Target(
             python_binder=PythonBinder.PYBIND11,
-            python=PythonTarget(3, 12, 13),
             build_platform=Platform("amd64/almalinux", "9", "almalinux9"),
-            test_platforms=(
-                Platform("amazonlinux", "2023", "AL2023"),
-                Platform("ubuntu", "24.04", "noble"),
-                Platform("ubuntu", "26.04", "resolute", PythonManager.UV),
-            ),
+            build_python=PythonTarget(3, 12, 13),
+            test_platforms=_TEST_PLATFORMS,
+            test_pythons=(PythonTarget(3, 12),),
         ),
         Target(
             python_binder=PythonBinder.PYBIND11,
-            python=PythonTarget(3, 13, 15),
             build_platform=Platform("amd64/almalinux", "9", "almalinux9"),
-            test_platforms=(
-                Platform("amazonlinux", "2023", "AL2023"),
-                Platform("ubuntu", "24.04", "noble", PythonManager.UV),
-                Platform("ubuntu", "26.04", "resolute", PythonManager.UV),
-            ),
+            build_python=PythonTarget(3, 13, 15),
+            test_platforms=_TEST_PLATFORMS,
+            test_pythons=(PythonTarget(3, 13),),
         ),
         Target(
             python_binder=PythonBinder.PYBIND11,
-            python=PythonTarget(3, 14, 7),
             build_platform=Platform("amd64/almalinux", "9", "almalinux9"),
-            test_platforms=(
-                Platform("amazonlinux", "2023", "AL2023"),
-                Platform("ubuntu", "24.04", "noble", PythonManager.UV),
-                Platform("ubuntu", "26.04", "resolute"),
-            ),
+            build_python=PythonTarget(3, 14, 7),
+            test_platforms=_TEST_PLATFORMS,
+            test_pythons=(PythonTarget(3, 14),),
         ),
     ),
     "aarch64": (
         Target(
             python_binder=PythonBinder.NANOBIND,
-            python=PythonTarget(3, 12, 13),
             build_platform=Platform("arm64v8/almalinux", "9", "almalinux9"),
-            test_platforms=(
-                Platform("amazonlinux", "2023", "AL2023"),
-                Platform("ubuntu", "24.04", "noble"),
-                Platform("ubuntu", "26.04", "resolute", PythonManager.UV),
-                # TODO(jwnimmer-tri) We should test this same abi3 wheel on all
-                # newer Python versions (so 3.13, 3.14, etc.).
+            build_python=PythonTarget(3, 12, 13),
+            test_platforms=_TEST_PLATFORMS,
+            test_pythons=(
+                PythonTarget(3, 12),
+                PythonTarget(3, 13),
+                PythonTarget(3, 14),
             ),
         ),
         Target(
             python_binder=PythonBinder.PYBIND11,
-            python=PythonTarget(3, 12, 13),
             build_platform=Platform("arm64v8/almalinux", "9", "almalinux9"),
-            test_platforms=(
-                Platform("amazonlinux", "2023", "AL2023"),
-                Platform("ubuntu", "24.04", "noble"),
-                Platform("ubuntu", "26.04", "resolute", PythonManager.UV),
-            ),
+            build_python=PythonTarget(3, 12, 13),
+            test_platforms=_TEST_PLATFORMS,
+            test_pythons=(PythonTarget(3, 12),),
         ),
         Target(
             python_binder=PythonBinder.PYBIND11,
-            python=PythonTarget(3, 13, 15),
             build_platform=Platform("arm64v8/almalinux", "9", "almalinux9"),
-            test_platforms=(
-                Platform("amazonlinux", "2023", "AL2023"),
-                Platform("ubuntu", "24.04", "noble", PythonManager.UV),
-                Platform("ubuntu", "26.04", "resolute", PythonManager.UV),
-            ),
+            build_python=PythonTarget(3, 13, 15),
+            test_platforms=_TEST_PLATFORMS,
+            test_pythons=(PythonTarget(3, 13),),
         ),
         Target(
             python_binder=PythonBinder.PYBIND11,
-            python=PythonTarget(3, 14, 7),
             build_platform=Platform("arm64v8/almalinux", "9", "almalinux9"),
-            test_platforms=(
-                Platform("amazonlinux", "2023", "AL2023"),
-                Platform("ubuntu", "24.04", "noble", PythonManager.UV),
-                Platform("ubuntu", "26.04", "resolute"),
-            ),
+            build_python=PythonTarget(3, 14, 7),
+            test_platforms=_TEST_PLATFORMS,
+            test_pythons=(PythonTarget(3, 14),),
         ),
     ),
 }[ARCH]
@@ -243,24 +230,23 @@ def _build_tagname(target: Target, tag_prefix: str) -> str:
     """
     Generates a Docker tag name for a build-role target and tag prefix.
     """
-    platform = target.platform(BUILD)
-    python_tag = target.python.tag
+    platform = target.build_platform.alias
+    python_tag = target.build_python.tag
     python_binder = target.python_binder.value
     python_details = f"py{python_tag}-{python_binder}"
     return f"{tag_base}:{tag_prefix}-{platform.alias}-{python_details}"
 
 
-def _test_tagname(target: Target, test_index: int, tag_prefix: str) -> str:
+def _test_tagname(test_case: TestCase, tag_prefix: str) -> str:
     """
-    Generates a Docker tag name for a test-role target, test_index, and tag
-    prefix.
+    Generates a Docker tag name for a test-role TestCase and stage/prefix.
     """
-    platform = target.platform(TEST, test_index)
-    manager = platform.python_manager.value
+    platform = test_case.alias
+    manager = test_case.python_manager.value
     if tag_prefix == "base":
-        return f"{tag_base}:{tag_prefix}-{platform.alias}-{manager}"
-    python_tag = target.python.tag
-    return f"{tag_base}:{tag_prefix}-{platform.alias}-py{python_tag}-{manager}"
+        return f"{tag_base}:{tag_prefix}-{platform}-{manager}"
+    python_tag = test_case.python.tag
+    return f"{tag_base}:{tag_prefix}-{platform}-py{python_tag}-{manager}"
 
 
 def _build_stage(tag, args, context_dir, stage=None):
@@ -276,27 +262,28 @@ def _build_stage(tag, args, context_dir, stage=None):
     _docker("build", "-t", tag, *extra, *args, context_dir)
 
 
-def _target_args(target: Target, role: Role, test_index: int | None = None):
+def _build_target_args(target: Target):
     """
-    Returns the Docker build arguments for the specified platform target.
-    Iff the role is the TEST role, then the test_index must be provided.
+    Returns the Docker build arguments for the build Dockerfile.
     """
-    platform = target.platform(role, test_index)
-
-    if role == BUILD:
-        python_args = [
-            "--build-arg", f"PYTHON={target.python.version_full}",
-            "--build-arg", f"DRAKE_PYTHON_BINDER={target.python_binder.value}",
-        ]  # fmt: skip
-    else:
-        python_args = [
-            "--build-arg", f"PYTHON={target.python.version}",
-            "--build-arg", f"PYTHON_MANAGER={platform.python_manager.value}",
-        ]  # fmt: skip
-
+    platform = f"{target.build_platform.name}:{target.build_platform.version}"
     return [
-        "--build-arg", f"PLATFORM={platform.name}:{platform.version}",
-    ] + python_args  # fmt: skip
+        "--build-arg", f"DRAKE_PYTHON_BINDER={target.python_binder.value}",
+        "--build-arg", f"PLATFORM={platform}",
+        "--build-arg", f"PYTHON={target.build_python.version_full}",
+    ]  # fmt: skip
+
+
+def _test_target_args(test_case: TestCase):
+    """
+    Returns the Docker build arguments for the test Dockerfile.
+    """
+    platform = f"{test_case.platform.name}:{test_case.platform.version}"
+    return [
+        "--build-arg", f"PLATFORM={platform}",
+        "--build-arg", f"PYTHON={test_case.python.version_full}",
+        "--build-arg", f"PYTHON_MANAGER={test_case.python_manager.value}",
+    ]  # fmt: skip
 
 
 def _build_image(target, identifier, version, options):
@@ -310,7 +297,7 @@ def _build_image(target, identifier, version, options):
         "--build-arg", f"DRAKE_VERSION={version}",
         "--build-arg", f"DRAKE_GIT_SHA={_git_sha(resource_root)}",
         "--build-arg", f"DRAKE_IS_ABI3_WHEEL={drake_is_abi3_wheel}",
-    ] + _target_args(target, BUILD)  # fmt: skip
+    ] + _build_target_args(target)  # fmt: skip
     if not options.keep_containers:
         args.append("--force-rm")
 
@@ -358,29 +345,32 @@ def _test_wheel(target, identifier, version, options):
     """
     Runs the test script for the wheel matching the specified target.
     """
-    glibc = glibc_versions[target.platform(BUILD).alias]
+    glibc = glibc_versions[target.build_platform.alias]
     wheel = wheel_name(
         python_binder=target.python_binder,
-        python_version=target.python.tag,
+        python_version=target.build_python.tag,
         wheel_version=version,
         wheel_platform=f"manylinux_{glibc}_{ARCH}",
     )
     test_dir = os.path.join(resource_root, "test")
 
-    for test_index, test_platform in enumerate(target.test_platforms):
-        print(f"[-] Testing on {test_platform.alias} ...")
-        args = _target_args(target, TEST, test_index)
-        test_image = _test_tagname(target, test_index, f"test-{identifier}")
+    for test_case in target.test_cases():
+        print(
+            f"[-] Testing on {test_case.alias}"
+            f" (Python {test_case.python.version}) ..."
+        )
+        args = _test_target_args(test_case)
+        test_image = _test_tagname(test_case, f"test-{identifier}")
         test_container = test_image.replace(":", "__")
         if options.tag_stages:
             # Build the base image, shared across multiple targets.
-            base_image = _test_tagname(target, test_index, "base")
+            base_image = _test_tagname(test_case, "base")
             if base_image not in _built_test_bases:
                 _build_stage(base_image, args, test_dir, "base")
                 _built_test_bases.add(base_image)
                 _images_to_remove.add(base_image)
 
-            provisioned_image = _test_tagname(target, test_index, "python")
+            provisioned_image = _test_tagname(test_case, "python")
             _build_stage(provisioned_image, args, test_dir, "python")
         else:
             provisioned_image = test_image
@@ -391,7 +381,7 @@ def _test_wheel(target, identifier, version, options):
         install_command = [
             "/test/install-wheel.sh",
             os.path.join(wheelhouse, wheel),
-            test_platform.python_manager.value,
+            test_case.python_manager.value,
         ]  # fmt: skip
         _docker(
             "run", "-t", f"--name={test_container}",
@@ -429,8 +419,8 @@ def build(options):
     targets_to_build = []
     for t in targets:
         if (
-            t.platform(BUILD).name in options.platforms
-            and t.python.tag in options.python_versions
+            t.build_platform.name in options.platforms
+            and t.build_python.tag in options.python_versions
         ):
             targets_to_build.append(t)
 
@@ -493,14 +483,14 @@ def add_selection_arguments(parser):
     parser.add_argument(
         "--platform",
         dest="platforms",
-        default=",".join({t.platform(BUILD).name for t in targets}),
+        default=",".join({t.build_platform.name for t in targets}),
         help="platform(s) to build; separate with ',' (default: %(default)s)",
     )
     parser.add_argument(
         "--python",
         dest="python_versions",
         metavar="VERSIONS",
-        default=",".join(sorted({t.python.tag for t in targets})),
+        default=",".join(sorted({t.build_python.tag for t in targets})),
         help=(
             "python version(s) to build; separate with ','"
             " (default: %(default)s)"
