@@ -208,6 +208,17 @@ def build(options):
         )
 
         if options.test:
+            # Create a unique test root for this target.
+            test_setup_script = os.path.join(
+                resource_root, "image", "provision-build.sh"
+            )
+            test_prefix = (
+                f"test-{target.python_binder.value}-{target.build_python.tag}"
+            )
+            subprocess.check_call(
+                ["bash", test_setup_script, test_prefix, "test"],
+                env=environment,
+            )
             for python_target in target.test_pythons:
                 _test_wheel(wheel, python_target, env=environment)
 
@@ -219,6 +230,7 @@ def build(options):
             os.unlink(build_root)
 
             if options.test:
+                shutil.rmtree(os.path.realpath(test_root))
                 os.unlink(test_root)
 
 

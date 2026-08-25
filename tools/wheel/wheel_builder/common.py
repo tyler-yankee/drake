@@ -67,7 +67,8 @@ class PythonTarget:
         self.tag = "".join(pv_parts[:2])
 
     def validate(self, n_components: int) -> None:
-        """XXX"""
+        """Asserts that the number of version components belonging to `self`
+        matches `n_components`."""
         assert len(self.version_tuple) == n_components, self.version_tuple
 
 
