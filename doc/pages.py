@@ -14,7 +14,7 @@ from doc.defs import (
 )
 
 
-def _build(*, out_dir, temp_dir):
+def _build(*, out_dir: str, temp_dir: str) -> list[str]:
     """Callback function that implements the bulk of main().
     Generates into out_dir; writes scratch files into temp_dir.
     As a precondition, both directories must already exist and be empty.

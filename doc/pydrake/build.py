@@ -18,28 +18,22 @@ import pydrake._all_everything  # noqa: F401 (unused-import)
 from pydrake.common import _MangledName
 
 
-def _get_submodules(name):
+def _get_submodules(name: str) -> list[str]:
     prefix = name + "."
     result = []
     for s_name in sys.modules:
         if not s_name.startswith(prefix):
             continue
         sub = s_name[len(prefix) :]
-        # Ensure its an immediate child.
+        # Ensure it's an immediate child.
         if "." in sub or sub.startswith("_"):
-            continue
-        # For some reason, things like `pydrake.common` has submodules like
-        # `inspect`, etc, whose value in `sys.modules` are none. Ignore those.
-        # TODO(eric.cousineau): Figure out where these come from, and remove
-        # them.
-        if sys.modules[s_name] is None:
             continue
         result.append(s_name)
     return sorted(result)
 
 
-def _get_pydrake_modules():
-    """Returns a list[str] of all pydrake modules that should appear in our
+def _get_pydrake_modules() -> list[str]:
+    """Returns a list of all pydrake modules that should appear in our
     Python API reference.
     """
     result = []
@@ -51,7 +45,7 @@ def _get_pydrake_modules():
     return sorted(result)
 
 
-def _has_cc_imported_symbols(name):
+def _has_cc_imported_symbols(name: str) -> bool:
     # Check for `module_py`.
     if name + "._module_py" in sys.modules:
         return True
@@ -67,7 +61,7 @@ def _has_cc_imported_symbols(name):
     return False
 
 
-def _write_module(name, f_name):
+def _write_module(name: str, f_name: str) -> None:
     """Writes an rst file for module `name` into `f_name`."""
     if verbose():
         print(f"Write: {name}")
@@ -93,19 +87,27 @@ def _write_module(name, f_name):
         f.write("    :show-inheritance:\n")
 
 
-def _sanity_check_output(*, out_dir):
-    for root, dirs, files in os.walk(out_dir):
+def _sanity_check_output(*, out_dir: str) -> None:
+    for root, _dirs, files in os.walk(out_dir):
         for name in files:
-            if name.endswith(".html"):
-                with open(join(root, name), "r", encoding="utf-8") as f:
-                    content = f.read()
-                if _MangledName.UNICODE_LEFT_BRACKET in content:
-                    # If this happens, then something with template name
-                    # mangling has gone awry and we need to investigate.
-                    raise RuntimeError(f"{name} has a mangled template name")
+            if not name.endswith(".html"):
+                continue
+
+            with open(join(root, name), "r", encoding="utf-8") as f:
+                content = f.read()
+            if _MangledName.UNICODE_LEFT_BRACKET in content:
+                # If this happens, then something with template name
+                # mangling has gone awry and we need to investigate.
+                raise RuntimeError(f"{name} has a mangled template name")
+            if "TemporaryName" in content:
+                # If this happens, then some template class instantiation
+                # was not renamed away from its `TemporaryClassName()`
+                # placeholder (see `cpp_template_pybind.h`) and we need to
+                # investigate.
+                raise RuntimeError(f"{name} has an unrenamed template name")
 
 
-def _build(*, out_dir, temp_dir, modules):
+def _build(*, out_dir: str, temp_dir: str, modules: list[str]) -> list[str]:
     """Generates into out_dir; writes scratch files into temp_dir.
     As a precondition, both directories must already exist and be empty.
     If modules are provided, only generate those modules and their children.
@@ -181,9 +183,8 @@ def _build(*, out_dir, temp_dir, modules):
     return [""]
 
 
-# TODO(eric.cousineau): Do some simple linting if this is run under `bazel
-# test` (e.g. scan for instances of `TemporaryName`, scan for raw C++ types
-# in type signatures, etc).
+# TODO(eric.cousineau): Extend `_sanity_check_output` to also scan for raw
+# C++ types leaking into type signatures.
 if __name__ == "__main__":
     os.environ["PYTHONPATH"] = ":".join(sys.path)
     main(

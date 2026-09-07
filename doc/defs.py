@@ -3,6 +3,7 @@ documentation generation tools.
 """
 
 import argparse
+from collections.abc import Callable
 import functools
 from http.server import SimpleHTTPRequestHandler
 import os.path
@@ -22,14 +23,17 @@ from python import runfiles
 _verbose = False
 
 
-def verbose():
+def verbose() -> bool:
     """Returns True iff doc builds should produce detailed console output."""
     return _verbose
 
 
 def symlink_input(
-    filegroup_resource_path, temp_dir, strip_prefix=None, copy=False
-):
+    filegroup_resource_path: str,
+    temp_dir: str,
+    strip_prefix: list[str] | None = None,
+    copy: bool = False,
+) -> None:
     """Symlinks a rule's input data into a temporary directory.
 
     This is useful both to create a hermetic set of inputs to pass to a
@@ -40,7 +44,7 @@ def symlink_input(
         filegroup_resource_path: Names a file created by enumerate_filegroup
           (in defs.bzl) which contains resource paths.
         temp_dir: Destination directory, which must already exist.
-        strip_prefix: Optional; a list[str] of candidate strings to remove
+        strip_prefix: Optional; a list of candidate strings to remove
           from the resource path when linking into temp_dir.  The first match
           wins, and it is valid for no prefixes to match.
         copy: Optional; if True, copies rather than linking.
@@ -67,7 +71,7 @@ def symlink_input(
             os.symlink(orig_name, temp_name)
 
 
-def check_call(args, *, cwd=None):
+def check_call(args: list[str], *, cwd: str | None = None) -> None:
     """Runs a subprocess command, raising an exception iff the process fails.
 
     Obeys the command-line verbosity flag for console output:
@@ -102,7 +106,11 @@ def check_call(args, *, cwd=None):
     proc.check_returncode()
 
 
-def perl_cleanup_html_output(*, out_dir, extra_perl_statements=None):
+def perl_cleanup_html_output(
+    *,
+    out_dir: str,
+    extra_perl_statements: list[str] | None = None,
+) -> None:
     """Runs a cleanup pass over all HTML output files, using a set of built-in
     fixups. Calling code may pass its own extra statements, as well.
     """
@@ -133,7 +141,11 @@ def perl_cleanup_html_output(*, out_dir, extra_perl_statements=None):
         )
 
 
-def _call_build(*, build, out_dir):
+def _call_build(
+    *,
+    build: Callable[[str, str], list[str]],
+    out_dir: str,
+) -> list[str]:
     """Calls build() into out_dir, while also supplying a temp_dir."""
     with tempfile.TemporaryDirectory(
         dir=os.environ.get("TEST_TMPDIR"), prefix="doc_builder_temp_"
@@ -151,7 +163,7 @@ class _HttpHandler(SimpleHTTPRequestHandler):
         pass
 
 
-def _on_server_error(server, *_):
+def _on_server_error(server, *_) -> None:
     """An implementation of socketserver.BaseServer.handle_error that ignores
     expected errors.
     """
@@ -163,7 +175,12 @@ def _on_server_error(server, *_):
     traceback.print_exc()
 
 
-def _do_preview(*, build, subdir, port):
+def _do_preview(
+    *,
+    build: Callable[[str, str], list[str]],
+    subdir: str,
+    port: int,
+) -> None:
     """Implements the "serve" (http) mode of main().
 
     Args:
@@ -206,7 +223,12 @@ def _do_preview(*, build, subdir, port):
             return
 
 
-def _do_generate(*, build, out_dir, on_error):
+def _do_generate(
+    *,
+    build: Callable[[str, str], list[str]],
+    out_dir: str,
+    on_error: Callable[[str], None],
+) -> None:
     """Implements the "generate" (file output) mode of main().
     Args:
         build: Same as per main().
@@ -236,8 +258,13 @@ def _do_generate(*, build, out_dir, on_error):
 
 
 def main(
-    *, build, subdir, description, supports_modules=False, supports_quick=False
-):
+    *,
+    build: Callable[..., list[str]],
+    subdir: str,
+    description: str,
+    supports_modules: bool = False,
+    supports_quick: bool = False,
+) -> None:
     """Reusable main() function for documentation binaries; processes
     command-line arguments and generates documentation.
 

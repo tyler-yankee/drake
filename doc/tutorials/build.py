@@ -30,7 +30,7 @@ _NO_EXECUTE = (
 )
 
 
-def _build(*, out_dir, temp_dir, modules):
+def _build(*, out_dir: str, temp_dir: str, modules: list[str]) -> list[str]:
     """Generates into out_dir; writes scratch files into temp_dir.
     As a precondition, both directories must already exist and be empty.
     If modules are provided, only generate those modules and their children.

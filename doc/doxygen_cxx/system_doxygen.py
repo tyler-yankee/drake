@@ -16,6 +16,7 @@ python documentation.
 # We suppress shebang lint checking because doxygen must be able to execute
 # this file.
 
+from collections.abc import Callable
 import re
 import sys
 from textwrap import indent
@@ -23,7 +24,7 @@ from textwrap import indent
 import yaml
 
 
-def system_yaml_to_html(system_yaml):
+def system_yaml_to_html(system_yaml: str) -> str:
     """
     Converts a YAML description of a system into an html table.
     """
@@ -65,7 +66,7 @@ def system_yaml_to_html(system_yaml):
     return html
 
 
-def system_yaml_to_pydrake_system_rst_directive(system_yaml):
+def system_yaml_to_pydrake_system_rst_directive(system_yaml: str) -> str:
     """
     Converts a raw YAML description of a system into a corresponding reST
     directive.
@@ -74,7 +75,7 @@ def system_yaml_to_pydrake_system_rst_directive(system_yaml):
     return f".. pydrake_system::\n\n{content}"
 
 
-def strip_cpp_comment_cruft(comment):
+def strip_cpp_comment_cruft(comment: str) -> str:
     """
     Intended to process the text *between* (and not including) the @system and
     @endsystem tags.
@@ -90,14 +91,13 @@ def strip_cpp_comment_cruft(comment):
     return comment
 
 
-def _process_doxygen(s, transform_func):
+def _process_doxygen(s: str, transform_func: Callable[[str], str]) -> str:
     """Given a multiline string s (potentially the entire contents of a c++
     file), this finds the @system / @endsystem tags and calls transform_func()
     on their contents.
 
     Raises exceptions on obsolete (brace-delimited) syntax, missing @endsystem
     tag, and illegal nesting of @system / @endsystem pairs.
-
     """
     obsolete_syntax = "@system{"
     if s.find(obsolete_syntax) >= 0:
@@ -126,7 +126,7 @@ def _process_doxygen(s, transform_func):
     return s
 
 
-def process_doxygen_to_sphinx(s):
+def process_doxygen_to_sphinx(s: str):
     """
     Takes a Doxygen C++ comment (as provided by mkdoc directly)
     and replaces any @system / @endsystem tags with a reformatted
@@ -138,7 +138,7 @@ def process_doxygen_to_sphinx(s):
     return _process_doxygen(s, system_yaml_to_pydrake_system_rst_directive)
 
 
-def process_doxygen_system_tags(s):
+def process_doxygen_system_tags(s: str):
     """
     Takes a Doxygen C++ comment (as provided by Doxygen via command-line
     invocation) and replaces any @system / @endsystem tags with reformatted

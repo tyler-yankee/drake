@@ -22,7 +22,7 @@ from doc.defs import (
 )
 
 
-def _cull_skipped_headers(*, temp_dir, modules):
+def _cull_skipped_headers(*, temp_dir: str, modules: list[str]) -> None:
     """Removes the header file symlinks for any modules beyond the requested
     list of `modules`, but never removes any headers under `doc/**`.
     """
@@ -55,7 +55,9 @@ def _cull_skipped_headers(*, temp_dir, modules):
             (dirpath / filename).unlink()
 
 
-def _generate_doxyfile(*, manifest, out_dir, temp_dir, dot):
+def _generate_doxyfile(
+    *, manifest, out_dir: str, temp_dir: str, dot: str
+) -> str:
     """Creates Doxyfile_CXX from Doxyfile_CXX.in."""
     input_filename = manifest.Rlocation("drake/doc/doxygen_cxx/Doxyfile_CXX.in")
     assert os.path.exists(input_filename)
@@ -90,7 +92,7 @@ def _generate_doxyfile(*, manifest, out_dir, temp_dir, dot):
     return output_filename
 
 
-def _generate_system_doxygen_wrapper(*, temp_dir):
+def _generate_system_doxygen_wrapper(*, temp_dir: str) -> None:
     # This matches Doxyfile_CXX.
     script = "drake/doc/doxygen_cxx/system_doxygen.py"
     content = f'exec {sys.executable} {script} "$@"'
@@ -99,7 +101,7 @@ def _generate_system_doxygen_wrapper(*, temp_dir):
     os.chmod(wrapper_path, stat.S_IRUSR | stat.S_IXUSR)
 
 
-def _generate_doxygen_header(*, doxygen, temp_dir):
+def _generate_doxygen_header(*, doxygen: str, temp_dir: str) -> None:
     """Creates Drake's header.html based on a patch to Doxygen's default
     header template.
     """
@@ -123,7 +125,7 @@ def _generate_doxygen_header(*, doxygen, temp_dir):
     check_call(["/usr/bin/patch", header_path, patch_file])
 
 
-def _is_important_warning(line):
+def _is_important_warning(line: str) -> bool:
     """Returns true iff the given line of Doxygen output should be promoted to
     a build error.
     """
@@ -148,7 +150,9 @@ def _is_important_warning(line):
     return False
 
 
-def _postprocess_doxygen_log(original_lines, check_for_errors):
+def _postprocess_doxygen_log(
+    original_lines: list[str], check_for_errors: bool
+) -> None:
     """If check_for_errors is true, then looks for any important warnings and
     fails-fast if any were found. When in verbose mode, also dumps the log to
     the console.
@@ -189,7 +193,9 @@ def _postprocess_doxygen_log(original_lines, check_for_errors):
         raise RuntimeError(message)
 
 
-def _build(*, out_dir, temp_dir, modules, quick):
+def _build(
+    *, out_dir: str, temp_dir: str, modules: list[str], quick: bool
+) -> list[str]:
     """Generates into out_dir; writes scratch files into temp_dir.
     As a precondition, both directories must already exist and be empty.
     """

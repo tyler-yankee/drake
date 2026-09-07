@@ -10,7 +10,7 @@ import textwrap
 from doc.defs import check_call, main, symlink_input
 
 
-def _add_title(*, temp_dir, filename, title):
+def _add_title(*, temp_dir: str, filename: str, title: str) -> None:
     """Adds a header to a Markdown file so that we can build it with Jekyll
     directly, without using the GitHub Pages infrastructure.
     The original file is replaced.
@@ -30,7 +30,7 @@ def _add_title(*, temp_dir, filename, title):
         f.write(data)
 
 
-def _build(*, out_dir, temp_dir):
+def _build(*, out_dir: str, temp_dir: str) -> list[str]:
     """Callback function that implements the bulk of main().
     Generates into out_dir; writes scratch files into temp_dir.
     As a precondition, both directories must already exist and be empty.
