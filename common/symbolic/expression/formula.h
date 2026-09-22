@@ -1172,6 +1172,21 @@ struct less<drake::symbolic::Formula> {
   }
 };
 
+#ifdef _LIBCPP_VERSION
+#if __has_include(<__type_traits/make_transparent.h>)
+// Recent versions of libc++ substitute std::less<> for std::less<T> when
+// searching a std::set or std::map, which would bypass our specialization
+// above. Opt out of that substitution.
+// https://issues.fuchsia.dev/issues/447427729
+// https://github.com/llvm/llvm-project/pull/157866
+template <>
+struct __make_transparent<drake::symbolic::Formula,
+                          less<drake::symbolic::Formula>> {
+  using type = less<drake::symbolic::Formula>;
+};
+#endif  // make_transparent.h
+#endif  // _LIBCPP_VERSION
+
 /* Provides std::equal_to<drake::symbolic::Formula>. */
 template <>
 struct equal_to<drake::symbolic::Formula> {
