@@ -96,41 +96,75 @@ _KNOWN_BAD_SYMBOLS_SUBSTR = [
 LIBDRAKE = "tools/install/libdrake/libdrake.so"
 
 
-def _is_known_bad_ctor_or_dtor(*, filename, function_name):
-    is_snake_case = filename == filename.lower()
-    if filename.startswith("vtk") and not is_snake_case:
-        # TODO(#24447) Fix VTK to remove globals.
-        return True
-    if filename in ["Singletons.cxx", "Token.cxx"]:
-        # TODO(#24447) Fix VTK to remove globals.
-        return True
-    if function_name.startswith("drake_vendor::vtk"):
-        # TODO(#24447) Fix VTK to remove globals.
-        return True
-    if function_name.startswith("drake_vendor::(anonymous namespace)::vtk"):
-        # TODO(#24447) Fix VTK to remove globals (anon-namespace vtk helpers).
-        return True
+def _is_known_bad_global_ctor_dtor(function_name):
+    """Returns True iff the given function (called by a global constructor or
+    registered as a global destructor) is a known violation."""
     if function_name.startswith(
-        (
-            # VTK free functions (no vtk* prefix) that the rules
-            # above can't catch.
-            "drake_vendor::GetDummy",  # vtkPolyData.cxx
-        )
+        "vtkCellTypeSides::drake_vendor::FixedSizeCellSide"
     ):
-        # TODO(#24447) Fix VTK to remove globals.
+        # TODO(#24447) vtkCellTypeSides.h uses static inline data members.
         return True
-    if function_name.startswith("vtk::drake_vendor::"):
-        # TODO(#24447) Fix VTK to remove globals.
-        return True
-    if function_name.startswith("vtktoken::"):
-        # TODO(#24447) Fix VTK to remove globals.
-        return True
-    if function_name.startswith("__static_initialization_and_destruction_0"):
-        # This appears to be a secondary effect of other globals. Once we've
-        # fixed all of the other bad ctors and dtors, we can circle back here
-        # to see if this suppression can also be removed.
-        return True
-    return False
+    # TODO(#24447) token/Singletons.h uses a Schwarz counter.
+    return function_name in (
+        "vtktoken::detail::singletonsCleanup::singletonsCleanup()",
+        "vtktoken::detail::singletonsCleanup::~singletonsCleanup()",
+        "std::shared_ptr<vtktoken::Manager>::~shared_ptr()",
+    )
+
+
+# Functions that are known to call __cxa_atexit (i.e., that have a function-
+# local static with a non-trivial destructor). These are qualified names with
+# the parameter list removed, so that overloads don't need to be spelled out.
+_KNOWN_BAD_ATEXIT_CALLERS = {
+    # TODO(#24447) Fix VTK to remove function-local static destructors.
+    "drake_vendor::(anonymous namespace)::vtkEGLDisplayInitializationHelper::Initialize",  # noqa
+    "drake_vendor::GetDummy",  # vtkPolyData.cxx
+    "drake_vendor::vtkEGLRenderWindowInternals::DestroyWindow",
+    "vtk::drake_vendor::printf_escape_regex",
+    "vtk::drake_vendor::printf_specifier_regex",
+    "vtk::drake_vendor::printf_to_std_format",
+    "vtktoken::Manager::value[abi:cxx11]",
+    # TODO(#24447) Update VTK's copy of KWSys (kwsys!391).
+    "vtksys::SystemToolsAppendComponents",
+    # TODO(#24447) VTK's vtkGlobalStatic design destroys these at exit.
+    # vtkOutputWindow.cxx (its anonymous namespace is outside of the VTK ABI
+    # namespace).
+    "(anonymous namespace)::GetGlobalData",
+    # vtkObjectFactory.cxx, vtkImageReader2Factory.cxx, vtkTextRenderer.cxx.
+    "drake_vendor::(anonymous namespace)::GetGlobalData",
+    "drake_vendor::(anonymous namespace)::GetObjectFactoryPreferences",
+    "drake_vendor::vtkCommonInformationKeyManager::Register",
+    "drake_vendor::vtkCommonInformationKeyManager::Unregister",
+    "drake_vendor::vtkDebugLeaksManager::GetInstance",
+    "drake_vendor::vtkFilteringInformationKeyManager::GetDataReference",
+    "drake_vendor::vtkFilteringInformationKeyManager::Register",
+    "drake_vendor::vtkFilteringInformationKeyManager::Unregister",
+    "drake_vendor::vtkGarbageCollectorManager::GetInstance",
+    "drake_vendor::vtkGetTimerLogEntryVector",
+    "drake_vendor::vtkInformationKeyLookup::GetDataHandle",
+    "drake_vendor::vtkObjectBase::vtkObjectBase",
+    "vtk::detail::smp::drake_vendor::vtkSMPToolsAPI::GetInstance",
+}
+
+
+def _is_known_bad_atexit_caller(function_name):
+    """Returns True iff the given (demangled) function is known to call
+    __cxa_atexit."""
+    # Strip the trailing parameter list (and any cv-qualifier), e.g.,
+    # "ns::Foo(int) const" => "ns::Foo". We can't simply split on the first
+    # "(" because of names like "(anonymous namespace)::Bar()".
+    name = function_name.removesuffix(" const")
+    if name.endswith(")"):
+        depth = 0
+        for i in range(len(name) - 1, -1, -1):
+            if name[i] == ")":
+                depth += 1
+            elif name[i] == "(":
+                depth -= 1
+                if depth == 0:
+                    name = name[:i]
+                    break
+    return name in _KNOWN_BAD_ATEXIT_CALLERS
 
 
 class ExportedSymbolsTest(unittest.TestCase):
@@ -284,18 +318,10 @@ class ExportedSymbolsTest(unittest.TestCase):
                 # still report a non-specific error.
                 ctor_calls = ["unknown constructor"]
             for function_name in ctor_calls:
-                is_known_bad = _is_known_bad_ctor_or_dtor(
-                    filename=filename,
-                    function_name=function_name,
-                )
-                if not is_known_bad:
+                if not _is_known_bad_global_ctor_dtor(function_name):
                     ctors.setdefault(function_name, []).append(filename)
             for function_name in dtor_calls:
-                is_known_bad = _is_known_bad_ctor_or_dtor(
-                    filename=filename,
-                    function_name=function_name,
-                )
-                if not is_known_bad:
+                if not _is_known_bad_global_ctor_dtor(function_name):
                     dtors.setdefault(function_name, []).append(filename)
         return ctors, dtors
 
@@ -367,7 +393,7 @@ class ExportedSymbolsTest(unittest.TestCase):
     @staticmethod
     def _find_cxa_atexit_callers(binary):
         """Returns a list of (demangled) function names that call __cxa_atexit,
-        except for those _is_known_bad_ctor_or_dtor already knows are bad.
+        except for those _is_known_bad_atexit_caller already knows are bad.
         """
         # Locate the PLT virtual memory address ("VMA") for __cxa_atexit.
         for i, reloc in enumerate(binary.pltgot_relocations):
@@ -439,10 +465,7 @@ class ExportedSymbolsTest(unittest.TestCase):
                 # so we'll skip it here to avoid duplicate reports.
                 continue
             function_name = ExportedSymbolsTest._demangle(name).strip()
-            if not _is_known_bad_ctor_or_dtor(
-                filename="",
-                function_name=function_name,
-            ):
+            if not _is_known_bad_atexit_caller(function_name):
                 failures.append(function_name)
 
         return failures
